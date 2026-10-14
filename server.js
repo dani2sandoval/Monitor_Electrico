@@ -42,8 +42,36 @@ let lastProcessedEntryId=loadSyncCursor();
 let syncCursorReady=null;
 const publicRoot=path.resolve(__dirname,'public');
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.ico':'image/x-icon'};
+const rateBuckets=new Map();
+const RATE_WINDOW_MS=60_000;
+const RATE_LIMITS={feeds:30,history:60};
+function requestAddress(req){
+ const forwarded=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
+ return forwarded||req.socket?.remoteAddress||'unknown';
+}
+function allowRequest(req,bucket){
+ const now=Date.now();
+ const key=`${bucket}:${requestAddress(req)}`;
+ const current=rateBuckets.get(key);
+ if(!current||now-current.startedAt>=RATE_WINDOW_MS){rateBuckets.set(key,{startedAt:now,count:1});return true;}
+ current.count+=1;
+ return current.count<=RATE_LIMITS[bucket];
+}
+setInterval(()=>{
+ const threshold=Date.now()-RATE_WINDOW_MS;
+ for(const [key,value] of rateBuckets)if(value.startedAt<threshold)rateBuckets.delete(key);
+},RATE_WINDOW_MS).unref?.();
 function respond(res,status,data,contentType='application/json; charset=utf-8'){
- res.writeHead(status,{'Content-Type':contentType,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+ res.writeHead(status,{
+  'Content-Type':contentType,
+  'Cache-Control':'no-store',
+  'X-Content-Type-Options':'nosniff',
+  'X-Frame-Options':'DENY',
+  'Referrer-Policy':'no-referrer',
+  'Permissions-Policy':'camera=(), microphone=(), geolocation=(), payment=()',
+  'Content-Security-Policy':"default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'",
+  'Strict-Transport-Security':'max-age=31536000; includeSubDomains'
+ });
  res.end(typeof data==='string'?data:JSON.stringify(data));
 }
 const finiteNumber=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
@@ -207,8 +235,14 @@ async function getHistory(res){
 function handleRequest(req,res){
  if(req.method!=='GET')return respond(res,405,{error:'Método no permitido'});
  const pathname=new URL(req.url,'http://localhost').pathname;
- if(pathname==='/api/feeds'){getFeeds(res);return;}
- if(pathname==='/api/historial'){getHistory(res);return;}
+ if(pathname==='/api/feeds'){
+  if(!allowRequest(req,'feeds'))return respond(res,429,{error:'Demasiadas solicitudes. Intenta nuevamente en un minuto.'});
+  getFeeds(res);return;
+ }
+ if(pathname==='/api/historial'){
+  if(!allowRequest(req,'history'))return respond(res,429,{error:'Demasiadas solicitudes. Intenta nuevamente en un minuto.'});
+  getHistory(res);return;
+ }
  const targets={'/':'index.html','/index.html':'index.html','/historial.html':'historial.html','/css/styles.css':'css/styles.css','/css/historial.css':'css/historial.css','/js/app.js':'js/app.js','/js/historial.js':'js/historial.js','/js/export.js':'js/export.js','/vendor/jspdf.min.js':'vendor/jspdf.min.js','/vendor/jspdf-autotable.min.js':'vendor/jspdf-autotable.min.js','/vendor/write-excel-file.min.js':'vendor/write-excel-file.min.js'};
  const target=targets[pathname];
  if(!target)return respond(res,404,{error:'Ruta no encontrada'});
@@ -216,7 +250,16 @@ function handleRequest(req,res){
  fs.readFile(file,(err,data)=>{
   if(err)return respond(res,404,{error:'Archivo no encontrado'});
   const mime=types[path.extname(file)]||'application/octet-stream';
-  res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+  res.writeHead(200,{
+   'Content-Type':mime,
+   'Cache-Control':'no-store',
+   'X-Content-Type-Options':'nosniff',
+   'X-Frame-Options':'DENY',
+   'Referrer-Policy':'no-referrer',
+   'Permissions-Policy':'camera=(), microphone=(), geolocation=(), payment=()',
+   'Content-Security-Policy':"default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'",
+   'Strict-Transport-Security':'max-age=31536000; includeSubDomains'
+  });
   res.end(data);
  });
 }
