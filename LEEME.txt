@@ -1,0 +1,32 @@
+MONITOR INTELIGENTE DE CONSUMO ELECTRICO — PASO 33
+
+ESTRUCTURA
+- public/index.html: estructura web
+- public/css/styles.css: diseno y estilos
+- public/js/app.js: logica del navegador y graficas
+- server.js: servidor local, consulta segura al canal privado ThingSpeak
+- .env: configuracion privada (NO COMPARTIR)
+- package.json: comandos del proyecto
+
+INSTRUCCIONES
+1) Abre esta carpeta completa en Visual Studio Code.
+2) Abre el archivo .env y reemplaza PEGA_AQUI_TU_READ_API_KEY por tu Read API Key real.
+   Channel ID ya viene escrito como 3535134. Si cambias de canal, actualizalo.
+3) Abre Terminal > Nueva terminal en VS Code.
+4) Ejecuta: npm start
+5) Abre http://localhost:3000 en Chrome.
+
+No abras public/index.html haciendo doble clic ni con Live Server:
+el servidor Node.js debe estar activo para leer el canal privado.
+
+La pagina consulta automaticamente ThingSpeak cada 20 segundos y mantiene
+la grafica y los siete indicadores. No necesitas llenar ningun formulario.
+
+SEGURIDAD: Nunca compartas el archivo .env ni subas las claves a GitHub.
+El servidor escucha solo en localhost. Si quieres acceso por internet desde
+otras computadoras, necesitaremos configurar un servidor seguro con HTTPS
+y control de acceso.
+
+Voltaje, corriente, potencia, energia y costo siguen siendo simulados desde
+el ESP32 mientras no se completen las mediciones reales con proteccion y
+aislamiento adecuados. No conectes 120 V al circuito de protoboard.

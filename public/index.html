@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor Inteligente de Consumo Eléctrico</title>
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<header><div class="tag">PROYECTO ESP32 · THINGSPEAK</div><h1>Monitor Inteligente de Consumo Eléctrico</h1><div class="muted">Temperatura, voltaje, corriente, potencia, energía y costo · Actualización cada 20 segundos</div></header>
+<main class="wrap">
+<section class="panel live-banner" aria-label="Fuente de datos">
+ <div><strong>Datos automáticos desde ThingSpeak</strong><div class="muted">Canal privado · actualización cada 20 segundos</div></div>
+ <div class="info-row"><span id="connection" class="pill">CONECTANDO</span><button id="refresh" type="button" class="secondary">Actualizar ahora</button></div>
+</section>
+<div class="status"><span id="status" class="pill">INICIANDO</span><span id="updated">Esperando actualización...</span></div>
+<div class="notice" id="warning">MODO DE PRUEBA: voltaje, corriente, potencia, energía y costo siguen siendo datos SIMULADOS enviados por el ESP32. Temperatura y ADC son lecturas físicas de baja tensión.</div>
+<section class="cards" id="cards"></section>
+<section class="charts" id="charts"></section>
+<p class="foot">La potencia y la energía registradas en ThingSpeak son simuladas hasta integrar y calibrar los sensores reales. El consumo acumulado se reinicia al reiniciar el ESP32. En canales privados, la clave Read API Key permite acceder a los datos: no la compartas públicamente.</p>
+</main>
+<script src="/js/app.js" defer></script>
+</body></html>

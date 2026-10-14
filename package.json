@@ -1,0 +1,8 @@
+{
+  "name": "monitor-inteligente-consumo-electrico",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard ThingSpeak privado con Node.js y JavaScript",
+  "scripts": {"start": "node server.js"},
+  "engines": {"node": ">=18"}
+}
