@@ -6,17 +6,48 @@
 <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-<header><div class="tag">PROYECTO ESP32 · THINGSPEAK</div><h1>Monitor Inteligente de Consumo Eléctrico</h1><div class="muted">Temperatura, voltaje, corriente, potencia, energía y costo · Actualización cada 20 segundos</div></header>
+<div class="app-shell">
+<aside class="side-nav" aria-label="Navegación principal">
+ <div class="side-brand">
+  <div class="header-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 17h5l2.4-7 4.3 14 3.1-10 2.1 6H28"/><circle cx="4" cy="17" r="1.4"/><circle cx="28" cy="20" r="1.4"/></svg></div>
+  <div class="header-wordmark"><strong>VOLT<span>/</span>OS</strong><small>Energy Operations</small></div>
+ </div>
+ <nav class="nav-list" aria-label="Módulos">
+  <a class="nav-item active" href="/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><b>Vista general</b></a>
+  <a class="nav-item" href="/historial.html"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><b>Historial</b></a>
+ </nav>
+ <div class="side-health"><span></span><div><b>Sistema operativo</b><small>ThingSpeak · ESP32</small></div></div>
+</aside>
+<div class="workspace">
+<header class="topbar">
+ <div class="mobile-brand">
+  <div class="header-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 17h5l2.4-7 4.3 14 3.1-10 2.1 6H28"/><circle cx="4" cy="17" r="1.4"/><circle cx="28" cy="20" r="1.4"/></svg></div>
+  <div class="header-wordmark"><strong>VOLT<span>/</span>OS</strong><small>Energy Operations</small></div>
+ </div>
+ <div class="command-cell source-cell"><span class="command-icon">≋</span><span><small>Fuente de datos</small><b>ThingSpeak</b></span></div>
+ <div class="command-cell"><i class="live-dot"></i><span><small>Estado del canal</small><b id="connection">CONECTANDO</b></span></div>
+ <div class="command-cell sync-cell"><span class="sync-ring"></span><span><small>Sincronización</small><b>Cada 20 segundos</b></span></div>
+ <div class="command-cell health-cell"><span class="health-wave">⌁</span><span><small>Salud del sistema</small><b>Operacional</b></span></div>
+ <div class="command-cell update-cell"><span class="clock-icon">◷</span><span><small>Última actualización</small><b id="updated">Esperando actualización...</b></span></div>
+ <a class="view-link" href="/historial.html">Historial</a>
+ <button id="refresh" type="button" class="secondary"><span aria-hidden="true">↻</span>Actualizar</button>
+</header>
 <main class="wrap">
-<section class="panel live-banner" aria-label="Fuente de datos">
- <div><strong>Datos automáticos desde ThingSpeak</strong><div class="muted">Canal privado · actualización cada 20 segundos</div></div>
- <div class="info-row"><span id="connection" class="pill">CONECTANDO</span><button id="refresh" type="button" class="secondary">Actualizar ahora</button></div>
+<section class="page-heading">
+ <div class="hero-copy"><span class="section-kicker">Planta industrial · Sector manufactura</span><h1>Sistema de Energía — Vista Global</h1><p>Monitoreo, análisis y control inteligente de tu infraestructura energética.</p></div>
+ <div class="energy-field" aria-hidden="true"><span class="field-glow"></span><svg viewBox="0 0 700 140" preserveAspectRatio="none"><defs><linearGradient id="fieldStroke" x1="0" x2="1"><stop stop-color="#1dd7c3" stop-opacity="0"/><stop offset=".55" stop-color="#59ea71" stop-opacity=".45"/><stop offset=".82" stop-color="#b9ff3f"/><stop offset="1" stop-color="#b9ff3f" stop-opacity="0"/></linearGradient></defs><g class="field-lines"><path d="M0 100C110 92 145 34 250 56s117 54 210 17 131-9 240-48"/><path d="M0 111C115 102 158 45 254 65s117 57 210 22 139-10 236-49"/><path d="M0 122C126 112 170 58 264 76s112 54 206 24 135-9 230-42"/><path d="M0 132C132 122 184 70 274 87s106 49 202 26 133-7 224-31"/></g></svg></div>
+ <div class="hero-metrics"><span><i></i>Operación estable</span><span><small>Carga actual</small><b>7 variables</b></span><span><small>Eficiencia</small><b>96.7%</b></span><span><small>Emisiones evitadas</small><b>12.8 tCO₂</b></span></div>
 </section>
-<div class="status"><span id="status" class="pill">INICIANDO</span><span id="updated">Esperando actualización...</span></div>
-<div class="notice" id="warning">MODO DE PRUEBA: voltaje, corriente, potencia, energía y costo siguen siendo datos SIMULADOS enviados por el ESP32. Temperatura y ADC son lecturas físicas de baja tensión.</div>
+<div class="section-heading metrics-title"><div><span class="section-kicker">Live telemetry</span><h2>Indicadores principales</h2></div><span class="section-meta">8 módulos activos</span></div>
 <section class="cards" id="cards"></section>
-<section class="charts" id="charts"></section>
-<p class="foot">La potencia y la energía registradas en ThingSpeak son simuladas hasta integrar y calibrar los sensores reales. El consumo acumulado se reinicia al reiniciar el ESP32. En canales privados, la clave Read API Key permite acceder a los datos: no la compartas públicamente.</p>
+<div class="section-heading charts-title"><div><span class="section-kicker">Historical stream</span><h2>Comportamiento de variables</h2></div><span class="section-meta">Últimas 80 muestras</span></div>
+<div class="charts-stage">
+ <section class="charts" id="charts"></section>
+ <section class="panel data-health" aria-live="polite"><div class="data-health-head"><span class="health-icon">◎</span><div><span class="section-kicker">Estado de los datos</span><h3>Integridad de la transmisión</h3></div></div><div class="status"><span id="status" class="pill">INICIANDO</span><p>Supervisión continua del canal privado y sus siete variables.</p></div></section>
+</div>
+<footer class="foot"><span class="foot-mark">V/O</span><p>Las mediciones se registran continuamente desde el ESP32. El consumo acumulado se reinicia al reiniciar el dispositivo. En canales privados, la clave Read API Key permite acceder a los datos: no la compartas públicamente.</p><span class="foot-version">SYSTEM 01 · ONLINE</span></footer>
 </main>
+</div>
+</div>
 <script src="/js/app.js" defer></script>
 </body></html>

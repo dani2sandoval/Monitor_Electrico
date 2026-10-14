@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Historial de mediciones · VOLT/OS</title>
+ <link rel="stylesheet" href="/css/historial.css">
+</head>
+<body>
+ <div class="app-shell">
+  <aside class="side-nav" aria-label="Navegación principal">
+   <a class="brand" href="/" aria-label="VOLT/OS, ir al Dashboard">
+    <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 17h5l2.4-7 4.3 14 3.1-10 2.1 6H28"/><circle cx="4" cy="17" r="1.4"/><circle cx="28" cy="20" r="1.4"/></svg></span>
+    <span><strong>VOLT<i>/</i>OS</strong><small>Energy Operations</small></span>
+   </a>
+   <nav class="nav-list" aria-label="Vistas">
+    <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><b>Vista general</b></a>
+    <a class="nav-item active" href="/historial.html" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><b>Historial</b></a>
+   </nav>
+   <div class="system-health"><i></i><span><strong>Sistema operativo</strong><small>Supabase · PostgreSQL</small></span></div>
+  </aside>
+
+  <div class="workspace">
+   <header class="topbar">
+    <a class="mobile-brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 17h5l2.4-7 4.3 14 3.1-10 2.1 6H28"/></svg></span><strong>VOLT/OS</strong></a>
+    <nav class="mobile-nav" aria-label="Navegación móvil"><a href="/">Dashboard</a><a class="active" href="/historial.html">Historial</a></nav>
+    <div class="data-source"><i></i><span><small>Origen de datos</small><strong>Supabase PostgreSQL</strong></span></div>
+    <button id="reload" type="button"><span aria-hidden="true">↻</span>Actualizar</button>
+   </header>
+
+   <main>
+    <section class="hero">
+     <div><span class="eyebrow">Archivo operativo · Base de datos</span><h1>Historial de mediciones</h1><p>Explora, filtra y ordena la telemetría energética consolidada.</p></div>
+     <div class="hero-status"><span><i></i>Datos persistentes</span><div><small>Registros visibles</small><strong id="visibleCount">—</strong></div><div><small>Total almacenado</small><strong id="totalCount">—</strong></div></div>
+    </section>
+
+    <section class="data-panel" aria-labelledby="tableTitle">
+     <div class="panel-head">
+      <div><span class="eyebrow">Data explorer</span><h2 id="tableTitle">Registro eléctrico</h2></div>
+      <span class="sync-state" id="syncState"><i></i><b>Cargando</b></span>
+     </div>
+
+     <form class="toolbar" id="filters">
+      <label class="date-field"><span>Desde</span><input id="dateFrom" type="date"></label>
+      <label class="date-field"><span>Hasta</span><input id="dateTo" type="date"></label>
+      <button class="clear-button" id="clearFilters" type="button">Limpiar filtros</button>
+      <label class="page-size"><span>Filas</span><select id="pageSize"><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select></label>
+     </form>
+
+     <section class="export-panel" aria-labelledby="exportTitle">
+      <div class="export-copy">
+       <span class="export-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg></span>
+       <div><span class="eyebrow">Reporting suite</span><h3 id="exportTitle">Exportar registros filtrados</h3><p>El reporte incluirá únicamente los resultados actuales de búsqueda y fecha.</p></div>
+      </div>
+      <div class="report-meta">
+       <span><small>Proyecto</small><strong>Monitor Inteligente de Consumo Eléctrico</strong></span>
+       <span><small>Registros encontrados</small><strong id="exportCount">0</strong></span>
+       <span><small>Fecha de generación</small><strong id="generatedAt">—</strong></span>
+      </div>
+      <div class="export-actions" aria-label="Formatos de exportación">
+       <button type="button" data-export="pdf"><b>PDF</b><small>Reporte paginado</small></button>
+       <button type="button" data-export="xlsx"><b>Excel</b><small>Libro .xlsx</small></button>
+       <button type="button" data-export="csv"><b>CSV</b><small>Compatible con Excel</small></button>
+      </div>
+      <p class="export-feedback" id="exportFeedback" role="status" aria-live="polite"></p>
+     </section>
+
+     <div class="table-shell">
+      <div class="state-layer loading" id="loadingState" role="status"><span class="loader"></span><strong>Consultando historial</strong><small>Sincronizando con Supabase…</small></div>
+      <div class="state-layer error" id="errorState" role="alert" hidden><span>!</span><strong>No fue posible cargar los datos</strong><small id="errorMessage">Intenta nuevamente.</small><button id="retry" type="button">Reintentar</button></div>
+      <div class="state-layer empty" id="emptyState" hidden><span>∅</span><strong>Sin resultados</strong><small>No hay mediciones que coincidan con los filtros actuales.</small></div>
+      <div class="table-scroll">
+       <table>
+        <thead><tr>
+         <th><button type="button" data-sort="date">Fecha<span></span></button></th>
+         <th><button type="button" data-sort="time">Hora<span></span></button></th>
+         <th><button type="button" data-sort="temperatura">Temperatura<span></span></button></th>
+         <th><button type="button" data-sort="voltaje">Voltaje<span></span></button></th>
+         <th><button type="button" data-sort="corriente">Corriente<span></span></button></th>
+         <th><button type="button" data-sort="potencia">Potencia<span></span></button></th>
+         <th><button type="button" data-sort="energia">Energía<span></span></button></th>
+         <th><button type="button" data-sort="costo">Costo<span></span></button></th>
+         <th><button type="button" data-sort="senal_adc">Señal ADC<span></span></button></th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+       </table>
+      </div>
+     </div>
+
+     <footer class="pagination">
+      <p id="rangeLabel">Esperando datos…</p>
+      <div><button id="previousPage" type="button" aria-label="Página anterior">←</button><span id="pageLabel">Página 1 de 1</span><button id="nextPage" type="button" aria-label="Página siguiente">→</button></div>
+     </footer>
+    </section>
+   </main>
+  </div>
+ </div>
+ <script src="/vendor/jspdf.min.js" defer></script>
+ <script src="/vendor/jspdf-autotable.min.js" defer></script>
+ <script src="/vendor/write-excel-file.min.js" defer></script>
+ <script src="/js/historial.js" defer></script>
+ <script src="/js/export.js" defer></script>
+</body>
+</html>
