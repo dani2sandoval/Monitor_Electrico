@@ -4,10 +4,13 @@
   "private": true,
   "description": "Dashboard ThingSpeak privado con Node.js y JavaScript",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check api/index.js && node --check public/js/app.js && node --check public/js/historial.js && node --check public/js/export.js",
+    "vercel-build": "npm run check"
   },
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

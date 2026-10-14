@@ -36,7 +36,8 @@ if(SUPABASE_URL&&SUPABASE_SERVICE_KEY){
  }
 }
 let persistenceQueue=Promise.resolve();
-const syncStatePath=path.join(__dirname,'.thingspeak-sync-state.json');
+const runtimeRoot=process.env.VERCEL?require('node:os').tmpdir():__dirname;
+const syncStatePath=path.join(runtimeRoot,'.thingspeak-sync-state.json');
 let lastProcessedEntryId=loadSyncCursor();
 let syncCursorReady=null;
 const publicRoot=path.resolve(__dirname,'public');
@@ -58,12 +59,43 @@ function loadSyncCursor(){
  }
 }
 function saveSyncCursor(entryId){
- fs.writeFileSync(syncStatePath,JSON.stringify({channel_id:CHANNEL_ID,last_entry_id:entryId,updated_at:new Date().toISOString()},null,2));
  lastProcessedEntryId=entryId;
+ try{
+  fs.writeFileSync(syncStatePath,JSON.stringify({channel_id:CHANNEL_ID,last_entry_id:entryId,updated_at:new Date().toISOString()},null,2));
+ }catch(error){
+  console.error('No se pudo persistir el cursor local de ThingSpeak:',error.message||error);
+ }
+}
+async function recoverSyncCursorFromSupabase(){
+ if(!supabase)return null;
+ const {data,error}=await supabase
+  .from('mediciones_electricas')
+  .select('created_at')
+  .order('created_at',{ascending:false})
+  .limit(1)
+  .maybeSingle();
+ if(error)throw error;
+ if(!data?.created_at)return null;
+ const api=new URL(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json`);
+ api.searchParams.set('api_key',READ_API_KEY);
+ api.searchParams.set('results','8000');
+ const response=await fetch(api,{signal:AbortSignal.timeout(12000)});
+ if(!response.ok)throw new Error(`ThingSpeak devolvió HTTP ${response.status} al recuperar el cursor`);
+ const payload=await response.json();
+ const storedTime=Date.parse(data.created_at);
+ const matching=(payload.feeds||[]).find(feed=>Date.parse(feed.created_at)===storedTime);
+ const entryId=Number(matching?.entry_id);
+ return Number.isInteger(entryId)&&entryId>=0?entryId:null;
 }
 async function initializeSyncCursor(){
  if(lastProcessedEntryId!==null)return;
  if(!/^\d+$/.test(CHANNEL_ID)||!READ_API_KEY||READ_API_KEY.startsWith('PEGA_AQUI'))throw new Error('ThingSpeak no está configurado');
+ const recoveredEntryId=await recoverSyncCursorFromSupabase();
+ if(recoveredEntryId!==null){
+  saveSyncCursor(recoveredEntryId);
+  console.log(`Sincronización reanudada desde entry_id ${recoveredEntryId}`);
+  return;
+ }
  const api=new URL(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds/last.json`);
  api.searchParams.set('api_key',READ_API_KEY);
  const response=await fetch(api,{signal:AbortSignal.timeout(12000)});
@@ -136,6 +168,7 @@ function queueMeasurements(feeds){
  persistenceQueue=persistenceQueue
   .then(()=>persistMeasurements(feeds))
   .catch(error=>console.error('Error guardando mediciones en Supabase:',error.message||error));
+ return persistenceQueue;
 }
 async function getFeeds(res){
  if(!/^\d+$/.test(CHANNEL_ID)||!READ_API_KEY||READ_API_KEY.startsWith('PEGA_AQUI')){
@@ -150,7 +183,7 @@ async function getFeeds(res){
   const data=await response.json();
   if(!Array.isArray(data.feeds))throw new Error('Respuesta inválida');
   const feeds=data.feeds.map(f=>({created_at:f.created_at,field1:f.field1,field2:f.field2,field3:f.field3,field4:f.field4,field5:f.field5,field6:f.field6,field7:f.field7}));
-  queueMeasurements(data.feeds);
+  await queueMeasurements(data.feeds);
   return respond(res,200,{feeds});
  }catch(error){
   console.error('Error consultando ThingSpeak:',error.message);
@@ -171,12 +204,12 @@ async function getHistory(res){
   return respond(res,502,{error:'No se pudo consultar el historial de mediciones.'});
  }
 }
-const server=http.createServer((req,res)=>{
+function handleRequest(req,res){
  if(req.method!=='GET')return respond(res,405,{error:'Método no permitido'});
  const pathname=new URL(req.url,'http://localhost').pathname;
  if(pathname==='/api/feeds'){getFeeds(res);return;}
  if(pathname==='/api/historial'){getHistory(res);return;}
- const targets={'/':'index.html','/index.html':'index.html','/historial.html':'historial.html','/css/styles.css':'css/styles.css','/css/historial.css':'css/historial.css','/js/app.js':'js/app.js','/js/historial.js':'js/historial.js','/js/export.js':'js/export.js','/vendor/jspdf.min.js':'../node_modules/jspdf/dist/jspdf.umd.min.js','/vendor/jspdf-autotable.min.js':'../node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.min.js','/vendor/write-excel-file.min.js':'../node_modules/write-excel-file/bundle/write-excel-file.min.js'};
+ const targets={'/':'index.html','/index.html':'index.html','/historial.html':'historial.html','/css/styles.css':'css/styles.css','/css/historial.css':'css/historial.css','/js/app.js':'js/app.js','/js/historial.js':'js/historial.js','/js/export.js':'js/export.js','/vendor/jspdf.min.js':'vendor/jspdf.min.js','/vendor/jspdf-autotable.min.js':'vendor/jspdf-autotable.min.js','/vendor/write-excel-file.min.js':'vendor/write-excel-file.min.js'};
  const target=targets[pathname];
  if(!target)return respond(res,404,{error:'Ruta no encontrada'});
  const file=path.join(publicRoot,target);
@@ -186,10 +219,14 @@ const server=http.createServer((req,res)=>{
   res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
   res.end(data);
  });
-});
-server.listen(PORT,'127.0.0.1',()=>{
- console.log(`Monitor disponible en http://localhost:${PORT}`);
- console.log(READ_API_KEY && !READ_API_KEY.startsWith('PEGA_AQUI')?'Read API Key configurada':'Falta configurar READ_API_KEY en .env');
- console.log(supabase?'Supabase configurado en el backend':'Supabase no configurado; el historial estará deshabilitado');
- ensureSyncCursor();
-});
+}
+if(require.main===module){
+ const server=http.createServer(handleRequest);
+ server.listen(PORT,'127.0.0.1',()=>{
+  console.log(`Monitor disponible en http://localhost:${PORT}`);
+  console.log(READ_API_KEY && !READ_API_KEY.startsWith('PEGA_AQUI')?'Read API Key configurada':'Falta configurar READ_API_KEY en .env');
+  console.log(supabase?'Supabase configurado en el backend':'Supabase no configurado; el historial estará deshabilitado');
+  ensureSyncCursor();
+ });
+}
+module.exports=handleRequest;
