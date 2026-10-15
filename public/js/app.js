@@ -3,12 +3,12 @@
 // Se almacenan en .env y se usan solamente en server.js.
 const fields=[
  {k:'field1',title:'Temperatura',unit:'°C',color:'#ffb86c',digits:1},
- {k:'field2',title:'Voltaje',unit:'V',color:'#77b7ff',digits:1},
- {k:'field3',title:'Corriente',unit:'A',color:'#a58aff',digits:2},
- {k:'field4',title:'Potencia',unit:'W',color:'#52dbb7',digits:1},
- {k:'field5',title:'Energía',unit:'kWh',color:'#eab76a',digits:5},
- {k:'field6',title:'Costo acumulado',unit:'Q',color:'#ff849e',digits:4},
- {k:'field7',title:'Señal ADC',unit:'V',color:'#81c1ea',digits:3}
+ {k:'field2',title:'Corriente experimental',unit:'A',color:'#a58aff',digits:3},
+ {k:'field3',title:'Señal ADC sin calibrar',unit:'mV',color:'#81c1ea',digits:1},
+ {k:null,title:'Voltaje de red',unit:'V',color:'#77b7ff',digits:1,pending:'Pendiente de calibración'},
+ {k:null,title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1,pending:'Pendiente de implementación'},
+ {k:null,title:'Energía consumida',unit:'kWh',color:'#eab76a',digits:5,pending:'Pendiente'},
+ {k:null,title:'Costo estimado',unit:'Q',color:'#ff849e',digits:4,pending:'Pendiente'}
 ];
 const $=id=>document.getElementById(id);
 const state={feeds:[],busy:false};
@@ -33,19 +33,34 @@ async function readThingspeak(){
   finally{clearTimeout(timer);}
   const json=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(json.error || `HTTP ${response.status}`);
-  if(!Array.isArray(json.feeds) || !json.feeds.length)throw new Error('Canal sin datos');
+  if(!Array.isArray(json.feeds) || !json.feeds.length)throw new Error('Sin datos');
   state.feeds=json.feeds;
   render();
   const last=state.feeds.at(-1),age=(Date.now()-Date.parse(last.created_at))/1000;
   setStatus(age>120?'DATOS ANTIGUOS · REVISAR ESP32':'THINGSPEAK CONECTADO',age>120?'bad':'good');
  }catch(e){
-  setStatus('NO SE PUDO ACTUALIZAR','bad');
-  $('quality').textContent='Sin actualizar';
-  $('updated').textContent='Detalle: '+e.message;
+  const noData=e.message==='Sin datos';
+  setStatus(noData?'SIN DATOS':'SIN CONEXIÓN','bad');
+  $('quality').textContent=noData?'Sin datos':'Sin conexión';
+  $('updated').textContent=noData?'Esperando una medición válida':'Último intento fallido';
   console.error(e);
  }finally{state.busy=false;}
 }
-function render(){const data=state.feeds;if(!data.length)return;const last=data.at(-1);fields.forEach((f,i)=>{const val=number(last[f.k]);$('v'+i).textContent=val===null||(i===0&&val===-127)?'—':val.toFixed(f.digits);drawChart($('c'+i),f,data);});let temp=number(last.field1);$('quality').textContent=temp===-127?'Sensor temp. ERROR':'Recibido';$('updated').textContent='Último registro: '+new Date(last.created_at).toLocaleString('es-GT',{dateStyle:'short',timeStyle:'medium'});}
+function render(){
+ const data=state.feeds;if(!data.length)return;
+ const last=data.at(-1);
+ fields.forEach((f,i)=>{
+  const valueElement=$('v'+i);
+  if(!f.k){valueElement.textContent=f.pending||'Pendiente';valueElement.nextElementSibling.textContent='';drawChart($('c'+i),f,data);return;}
+  const val=number(last[f.k]);
+  valueElement.textContent=val===null||(f.k==='field1'&&val===-127)?'Sin datos':val.toFixed(f.digits);
+  valueElement.nextElementSibling.textContent=f.unit;
+  drawChart($('c'+i),f,data);
+ });
+ const temp=number(last.field1);
+ $('quality').textContent=temp===-127?'Sensor temp. ERROR':'Datos reales · ThingSpeak';
+ $('updated').textContent='Último registro: '+new Date(last.created_at).toLocaleString('es-GT',{dateStyle:'short',timeStyle:'medium'});
+}
 const chartViews=new WeakMap();
 const interactiveCharts=new WeakSet();
 const chartColor=(hex,alpha)=>{const value=hex.replace('#','');const full=value.length===3?value.split('').map(c=>c+c).join(''):value;return `rgba(${parseInt(full.slice(0,2),16)},${parseInt(full.slice(2,4),16)},${parseInt(full.slice(4,6),16)},${alpha})`;};

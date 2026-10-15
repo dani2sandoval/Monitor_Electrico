@@ -154,12 +154,12 @@ function mapThingSpeakFeed(feed){
  const measurement={
   created_at:new Date(timestamp).toISOString(),
   temperatura:finiteNumber(feed.field1),
-  voltaje:finiteNumber(feed.field2),
-  corriente:finiteNumber(feed.field3),
-  potencia:finiteNumber(feed.field4),
-  energia:finiteNumber(feed.field5),
-  costo:finiteNumber(feed.field6),
-  senal_adc:finiteNumber(feed.field7)
+  voltaje:null,
+  corriente:finiteNumber(feed.field2),
+  potencia:null,
+  energia:null,
+  costo:null,
+  senal_adc:finiteNumber(feed.field3)
  };
  const hasReading=['temperatura','voltaje','corriente','potencia','energia','costo','senal_adc'].some(key=>measurement[key]!==null);
  return hasReading?{entryId,measurement}:null;
