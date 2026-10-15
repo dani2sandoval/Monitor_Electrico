@@ -76,13 +76,15 @@ function respond(res,status,data,contentType='application/json; charset=utf-8'){
 }
 const finiteNumber=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
 const tarifaGTQPorKWh=finiteNumber(process.env.TARIFA_GTQ_POR_KWH);
-function createElectricalState(){
+function createElectricalState(feeds=[]){
+ const latest=feeds.at(-1)||{};
+ const voltageVrms=finiteNumber(latest.field2);
  return {
-  voltageVrms:null,
+  voltageVrms,
   activePowerW:null,
   energyKWh:null,
   estimatedCostGTQ:null,
-  valid:{voltageVrms:false,activePowerW:false,energyKWh:false,estimatedCostGTQ:false}
+  valid:{voltageVrms:voltageVrms!==null,activePowerW:false,energyKWh:false,estimatedCostGTQ:false}
  };
 }
 function integrateValidPower(samples){
@@ -178,12 +180,12 @@ function mapThingSpeakFeed(feed){
  const measurement={
   created_at:new Date(timestamp).toISOString(),
   temperatura:finiteNumber(feed.field1),
-  voltaje:null,
-  corriente:finiteNumber(feed.field2),
+  voltaje:finiteNumber(feed.field2),
+  corriente:finiteNumber(feed.field3),
   potencia:null,
   energia:null,
   costo:null,
-  senal_adc:finiteNumber(feed.field3)
+  senal_adc:finiteNumber(feed.field7)
  };
  const hasReading=['temperatura','voltaje','corriente','potencia','energia','costo','senal_adc'].some(key=>measurement[key]!==null);
  return hasReading?{entryId,measurement}:null;
@@ -236,7 +238,7 @@ async function getFeeds(res){
   if(!Array.isArray(data.feeds))throw new Error('Respuesta inválida');
   const feeds=data.feeds.map(f=>({created_at:f.created_at,field1:f.field1,field2:f.field2,field3:f.field3,field4:f.field4,field5:f.field5,field6:f.field6,field7:f.field7}));
   await queueMeasurements(data.feeds);
-  return respond(res,200,{feeds,electrical:createElectricalState()});
+  return respond(res,200,{feeds,electrical:createElectricalState(feeds)});
  }catch(error){
   console.error('Error consultando ThingSpeak:',error.message);
   return respond(res,502,{error:'No se pudo consultar ThingSpeak. Verifica la conexión a internet y la configuración.'});

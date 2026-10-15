@@ -3,12 +3,12 @@
 // Se almacenan en .env y se usan solamente en server.js.
 const fields=[
  {k:'field1',title:'Temperatura',unit:'°C',color:'#ffb86c',digits:1},
- {k:'field2',title:'Corriente experimental',unit:'A',color:'#a58aff',digits:3},
- {k:'field3',title:'Señal ADC sin calibrar',unit:'mV',color:'#81c1ea',digits:1},
- {k:null,electricalKey:'voltageVrms',title:'Voltaje de red',unit:'V',color:'#77b7ff',digits:1,pending:'Pendiente de calibración'},
- {k:null,electricalKey:'activePowerW',title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1,pending:'Pendiente de implementación'},
- {k:null,electricalKey:'energyKWh',title:'Energía consumida',unit:'kWh',color:'#eab76a',digits:5,pending:'Pendiente'},
- {k:null,electricalKey:'estimatedCostGTQ',title:'Costo estimado',unit:'Q',color:'#ff849e',digits:4,pending:'Pendiente'}
+ {k:'field2',title:'Voltaje de red',unit:'V',color:'#77b7ff',digits:2},
+ {k:'field3',title:'Corriente experimental',unit:'A',color:'#a58aff',digits:3},
+ {k:null,electricalKey:'activePowerW',title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1,pending:'PENDIENTE'},
+ {k:null,electricalKey:'energyKWh',title:'Energía consumida',unit:'kWh',color:'#eab76a',digits:5,pending:'PENDIENTE'},
+ {k:null,electricalKey:'estimatedCostGTQ',title:'Costo estimado',unit:'Q',color:'#ff849e',digits:4,pending:'PENDIENTE'},
+ {k:'field7',title:'Señal ADC sin calibrar',unit:'mV',color:'#81c1ea',digits:1}
 ];
 const $=id=>document.getElementById(id);
 const state={feeds:[],electrical:null,busy:false};
