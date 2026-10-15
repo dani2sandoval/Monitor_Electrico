@@ -5,13 +5,13 @@ const fields=[
  {k:'field1',title:'Temperatura',unit:'°C',color:'#ffb86c',digits:1},
  {k:'field2',title:'Corriente experimental',unit:'A',color:'#a58aff',digits:3},
  {k:'field3',title:'Señal ADC sin calibrar',unit:'mV',color:'#81c1ea',digits:1},
- {k:null,title:'Voltaje de red',unit:'V',color:'#77b7ff',digits:1,pending:'Pendiente de calibración'},
- {k:null,title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1,pending:'Pendiente de implementación'},
- {k:null,title:'Energía consumida',unit:'kWh',color:'#eab76a',digits:5,pending:'Pendiente'},
- {k:null,title:'Costo estimado',unit:'Q',color:'#ff849e',digits:4,pending:'Pendiente'}
+ {k:null,electricalKey:'voltageVrms',title:'Voltaje de red',unit:'V',color:'#77b7ff',digits:1,pending:'Pendiente de calibración'},
+ {k:null,electricalKey:'activePowerW',title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1,pending:'Pendiente de implementación'},
+ {k:null,electricalKey:'energyKWh',title:'Energía consumida',unit:'kWh',color:'#eab76a',digits:5,pending:'Pendiente'},
+ {k:null,electricalKey:'estimatedCostGTQ',title:'Costo estimado',unit:'Q',color:'#ff849e',digits:4,pending:'Pendiente'}
 ];
 const $=id=>document.getElementById(id);
-const state={feeds:[],busy:false};
+const state={feeds:[],electrical:null,busy:false};
 $('cards').innerHTML=fields.map((f,i)=>`<article class="card"><div class="name">${f.title}</div><div class="val"><span id="v${i}">—</span><span class="unit">${f.unit}</span></div></article>`).join('')+'<article class="card"><div class="name">Estado de los datos</div><div class="val" id="quality" style="font-size:21px">Esperando</div></article>';
 $('charts').innerHTML=fields.map((f,i)=>`<section class="panel chartbox" style="--chart-color:${f.color}"><div class="chart-heading"><h3>${f.title}</h3><span class="chart-unit">${f.unit}</span></div><div class="chart-canvas-wrap"><canvas id="c${i}" role="img" aria-label="Historial de ${f.title}"></canvas><div class="chart-tooltip" role="tooltip" aria-hidden="true"><span class="chart-tooltip-time"></span><strong class="chart-tooltip-value"></strong></div></div></section>`).join('');
 const number=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
@@ -35,6 +35,7 @@ async function readThingspeak(){
   if(!response.ok)throw new Error(json.error || `HTTP ${response.status}`);
   if(!Array.isArray(json.feeds) || !json.feeds.length)throw new Error('Sin datos');
   state.feeds=json.feeds;
+  state.electrical=json.electrical||null;
   render();
   const last=state.feeds.at(-1),age=(Date.now()-Date.parse(last.created_at))/1000;
   setStatus(age>120?'DATOS ANTIGUOS · REVISAR ESP32':'THINGSPEAK CONECTADO',age>120?'bad':'good');
@@ -51,7 +52,14 @@ function render(){
  const last=data.at(-1);
  fields.forEach((f,i)=>{
   const valueElement=$('v'+i);
-  if(!f.k){valueElement.textContent=f.pending||'Pendiente';valueElement.nextElementSibling.textContent='';drawChart($('c'+i),f,data);return;}
+  if(!f.k){
+   const electrical=state.electrical;
+   const valid=electrical?.valid?.[f.electricalKey]===true;
+   const futureValue=valid?number(electrical[f.electricalKey]):null;
+   valueElement.textContent=futureValue===null?(f.pending||'Pendiente'):futureValue.toFixed(f.digits);
+   valueElement.nextElementSibling.textContent=futureValue===null?'':f.unit;
+   drawChart($('c'+i),f,data);return;
+  }
   const val=number(last[f.k]);
   valueElement.textContent=val===null||(f.k==='field1'&&val===-127)?'Sin datos':val.toFixed(f.digits);
   valueElement.nextElementSibling.textContent=f.unit;

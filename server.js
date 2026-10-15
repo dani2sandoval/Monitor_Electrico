@@ -75,6 +75,30 @@ function respond(res,status,data,contentType='application/json; charset=utf-8'){
  res.end(typeof data==='string'?data:JSON.stringify(data));
 }
 const finiteNumber=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
+const tarifaGTQPorKWh=finiteNumber(process.env.TARIFA_GTQ_POR_KWH);
+function createElectricalState(){
+ return {
+  voltageVrms:null,
+  activePowerW:null,
+  energyKWh:null,
+  estimatedCostGTQ:null,
+  valid:{voltageVrms:false,activePowerW:false,energyKWh:false,estimatedCostGTQ:false}
+ };
+}
+function integrateValidPower(samples){
+ if(!Array.isArray(samples)||samples.length<2)return null;
+ let energyKWh=0;
+ for(let i=1;i<samples.length;i++){
+  const previous=samples[i-1],current=samples[i];
+  if(!previous.valid||!current.valid)continue;
+  const elapsedHours=(Date.parse(current.created_at)-Date.parse(previous.created_at))/3600000;
+  if(Number.isFinite(elapsedHours)&&elapsedHours>0)energyKWh+=((previous.activePowerW+current.activePowerW)/2)*elapsedHours/1000;
+ }
+ return Number.isFinite(energyKWh)?energyKWh:null;
+}
+function calculateEstimatedCost(energyKWh){
+ return tarifaGTQPorKWh!==null&&Number.isFinite(energyKWh)?energyKWh*tarifaGTQPorKWh:null;
+}
 function loadSyncCursor(){
  try{
   if(!fs.existsSync(syncStatePath))return null;
@@ -212,7 +236,7 @@ async function getFeeds(res){
   if(!Array.isArray(data.feeds))throw new Error('Respuesta inválida');
   const feeds=data.feeds.map(f=>({created_at:f.created_at,field1:f.field1,field2:f.field2,field3:f.field3,field4:f.field4,field5:f.field5,field6:f.field6,field7:f.field7}));
   await queueMeasurements(data.feeds);
-  return respond(res,200,{feeds});
+  return respond(res,200,{feeds,electrical:createElectricalState()});
  }catch(error){
   console.error('Error consultando ThingSpeak:',error.message);
   return respond(res,502,{error:'No se pudo consultar ThingSpeak. Verifica la conexión a internet y la configuración.'});
