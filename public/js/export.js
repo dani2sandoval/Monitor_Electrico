@@ -15,8 +15,8 @@ class HistoryExporter {
     {label: "Corriente (A)", key: "corriente", decimals: 3},
     {label: "Potencia (W)", key: "potencia", decimals: 2},
     {label: "Energía (kWh)", key: "energia", decimals: 4},
-    {label: "Costo", key: "costo", decimals: 4},
-    {label: "Señal ADC", key: "senal_adc", decimals: 3, unit: "V"}
+    {label: "Costo (Q)", key: "costo", decimals: 4},
+    {label: "Señal ADC (mV)", key: "senal_adc", decimals: 3, unit: "mV"}
   ];
 
   constructor() {

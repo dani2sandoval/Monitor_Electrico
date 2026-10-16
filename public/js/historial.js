@@ -9,7 +9,7 @@ class HistoryView {
     this.sort = {key: "created_at", control: "date", direction: "desc"};
     this.locale = new Intl.DateTimeFormat("es-GT", {day: "2-digit", month: "2-digit", year: "numeric"});
     this.clock = new Intl.DateTimeFormat("es-GT", {hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false});
-    this.currency = new Intl.NumberFormat("es-GT", {style: "currency", currency: "USD", minimumFractionDigits: 3, maximumFractionDigits: 4});
+    this.costFormatter = new Intl.NumberFormat("es-GT", {minimumFractionDigits: 4, maximumFractionDigits: 4});
     this.elements = this.collectElements();
     this.bindEvents();
     this.load();
@@ -138,7 +138,7 @@ class HistoryView {
       this.locale.format(date), this.clock.format(date), this.measurement(record.temperatura, "°C", 2),
       this.measurement(record.voltaje, "V", 2), this.measurement(record.corriente, "A", 3),
       this.measurement(record.potencia, "W", 2), this.measurement(record.energia, "kWh", 4),
-      this.cost(record.costo), this.measurement(record.senal_adc, "V", 3)
+      this.cost(record.costo), this.measurement(record.senal_adc, "mV", 3)
     ];
     values.forEach(value => {
       const cell = document.createElement("td");
@@ -160,7 +160,7 @@ class HistoryView {
   cost(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return this.measurement(null, "", 0);
-    return this.currency.format(number);
+    return `Q ${this.costFormatter.format(number)}`;
   }
 
   updateSortIndicators() {
