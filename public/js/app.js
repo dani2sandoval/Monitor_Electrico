@@ -3,15 +3,15 @@
 // Se almacenan en .env y se usan solamente en server.js.
 const fields=[
  {k:'field1',title:'Temperatura',unit:'°C',color:'#ffb86c',digits:1},
- {k:'field2',title:'Voltaje de red',unit:'V',color:'#77b7ff',digits:2},
- {k:'field3',title:'Corriente experimental',unit:'A',color:'#a58aff',digits:3},
- {k:null,electricalKey:'activePowerW',title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1,pending:'PENDIENTE'},
- {k:null,electricalKey:'energyKWh',title:'Energía consumida',unit:'kWh',color:'#eab76a',digits:5,pending:'PENDIENTE'},
- {k:null,electricalKey:'estimatedCostGTQ',title:'Costo estimado',unit:'Q',color:'#ff849e',digits:4,pending:'PENDIENTE'},
+ {k:'field2',title:'Voltaje',unit:'V',color:'#77b7ff',digits:1},
+ {k:'field3',title:'Corriente',unit:'A',color:'#a58aff',digits:2},
+ {k:'field4',title:'Potencia activa',unit:'W',color:'#52dbb7',digits:1},
+ {k:'field5',title:'Energía acumulada',unit:'kWh',color:'#eab76a',digits:6,accumulated:true},
+ {k:'field6',title:'Costo acumulado',unit:'Q',color:'#ff849e',digits:4,accumulated:true},
  {k:'field7',title:'Señal ADC sin calibrar',unit:'mV',color:'#81c1ea',digits:1}
 ];
 const $=id=>document.getElementById(id);
-const state={feeds:[],electrical:null,busy:false};
+const state={feeds:[],busy:false};
 $('cards').innerHTML=fields.map((f,i)=>`<article class="card"><div class="name">${f.title}</div><div class="val"><span id="v${i}">—</span><span class="unit">${f.unit}</span></div></article>`).join('')+'<article class="card"><div class="name">Estado de los datos</div><div class="val" id="quality" style="font-size:21px">Esperando</div></article>';
 $('charts').innerHTML=fields.map((f,i)=>`<section class="panel chartbox" style="--chart-color:${f.color}"><div class="chart-heading"><h3>${f.title}</h3><span class="chart-unit">${f.unit}</span></div><div class="chart-canvas-wrap"><canvas id="c${i}" role="img" aria-label="Historial de ${f.title}"></canvas><div class="chart-tooltip" role="tooltip" aria-hidden="true"><span class="chart-tooltip-time"></span><strong class="chart-tooltip-value"></strong></div></div></section>`).join('');
 const number=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
@@ -35,7 +35,6 @@ async function readThingspeak(){
   if(!response.ok)throw new Error(json.error || `HTTP ${response.status}`);
   if(!Array.isArray(json.feeds) || !json.feeds.length)throw new Error('Sin datos');
   state.feeds=json.feeds;
-  state.electrical=json.electrical||null;
   render();
   const last=state.feeds.at(-1),age=(Date.now()-Date.parse(last.created_at))/1000;
   setStatus(age>120?'DATOS ANTIGUOS · REVISAR ESP32':'THINGSPEAK CONECTADO',age>120?'bad':'good');
@@ -52,17 +51,11 @@ function render(){
  const last=data.at(-1);
  fields.forEach((f,i)=>{
   const valueElement=$('v'+i);
-  if(!f.k){
-   const electrical=state.electrical;
-   const valid=electrical?.valid?.[f.electricalKey]===true;
-   const futureValue=valid?number(electrical[f.electricalKey]):null;
-   valueElement.textContent=futureValue===null?(f.pending||'Pendiente'):futureValue.toFixed(f.digits);
-   valueElement.nextElementSibling.textContent=futureValue===null?'':f.unit;
-   drawChart($('c'+i),f,data);return;
-  }
-  const val=number(last[f.k]);
-  valueElement.textContent=val===null||(f.k==='field1'&&val===-127)?'Sin datos':val.toFixed(f.digits);
-  valueElement.nextElementSibling.textContent=f.unit;
+  const current=number(last[f.k]);
+  const val=current===null&&f.accumulated?data.slice().reverse().map(feed=>number(feed[f.k])).find(value=>value!==null)??null:current;
+  const unavailable=val===null||(f.k==='field1'&&val===-127);
+  valueElement.textContent=unavailable?'Sin datos':val.toFixed(f.digits);
+  valueElement.nextElementSibling.textContent=unavailable?'':f.unit;
   drawChart($('c'+i),f,data);
  });
  const temp=number(last.field1);
